@@ -6,8 +6,8 @@ networks:
     name: sme_cert_network
     driver: bridge
   fabric_network:
+    external: true
     name: fabric_network
-    driver: bridge
     # This network is shared with the Fabric Docker Compose.
     # It is created here automatically. The Fabric compose references it as external.
 
@@ -24,6 +24,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: sme-cert-postgres
+    env_file: ../../.env
     environment:
       POSTGRES_DB: smecertdb
       POSTGRES_USER: smeuser
@@ -83,6 +84,7 @@ services:
       context: ../..
       dockerfile: apps/api/Dockerfile
     container_name: sme-cert-api
+    env_file: ../../.env
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://smeuser:${POSTGRES_PASSWORD}@postgres:5432/smecertdb
@@ -256,6 +258,7 @@ services:
   grafana:
     image: grafana/grafana:latest
     container_name: sme-cert-grafana
+    env_file: ../../.env
     user: "472:472"
     environment:
       - GF_SECURITY_ADMIN_USER=admin

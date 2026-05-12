@@ -2,8 +2,6 @@
 # 4 Organizations, 3 Raft Orderers, 8 Peers with CouchDB
 # Fabric 2.5 - required for v2 Go chaincode modules (Go 1.21+)
 
-version: '3.8'
-
 networks:
   fabric_network:
     name: fabric_network

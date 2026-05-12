@@ -1,9 +1,9 @@
-import { Controller, Get, Param, Query, ParseIntPipe, DefaultValuePipe, VERSION_NEUTRAL } from '@nestjs/common';
+import { Controller, Get, Param, Query, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { FabricService } from './common/fabric/fabric.service';
 
 @ApiTags('Health')
-@Controller({ path: 'health', version: VERSION_NEUTRAL })
+@Controller('health')
 export class HealthController {
   constructor(private fabricService: FabricService) {}
 
