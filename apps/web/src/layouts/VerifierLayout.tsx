@@ -28,14 +28,14 @@ export function VerifierLayout() {
 
   const SidebarContent = () => (
     <>
-      <div className="p-4 border-b">
+      <div className="border-b border-white/10 p-4">
         <Link to="/" className="flex items-center gap-2" onClick={closeSidebar}>
-          <div className="w-8 h-8 bg-egypt-navy rounded-lg flex items-center justify-center">
-            <Shield className="h-4 w-4 text-white" />
+          <div className="grid h-9 w-9 place-items-center rounded-2xl bg-gradient-to-br from-egypt-gold to-emerald-400 shadow-lg">
+            <Shield className="h-4 w-4 text-slate-950" />
           </div>
           <div>
-            <span className="font-bold text-egypt-navy text-sm">SME Cert</span>
-            <span className="text-[10px] text-muted-foreground block -mt-0.5 leading-none">Trust Platform</span>
+            <span className="text-sm font-black text-white">SME Cert</span>
+            <span className="block -mt-0.5 text-[10px] leading-none text-slate-400">Trust Platform</span>
           </div>
         </Link>
       </div>
@@ -46,10 +46,10 @@ export function VerifierLayout() {
             to={item.path}
             onClick={closeSidebar}
             className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+               'portal-nav-item',
               location.pathname === item.path
-                ? 'bg-egypt-navy text-white'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                 ? 'portal-nav-active'
+                 : 'portal-nav-idle'
             )}
           >
             <item.icon className="h-4 w-4" />
@@ -57,18 +57,18 @@ export function VerifierLayout() {
           </Link>
         ))}
       </nav>
-      <div className="p-4 border-t">
+      <div className="border-t border-white/10 p-4">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-9 h-9 bg-egypt-navy/10 rounded-full flex items-center justify-center shrink-0">
-            <User className="h-4 w-4 text-egypt-navy" />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/10">
+            <User className="h-4 w-4 text-egypt-gold-light" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold truncate">{user?.firstName} {user?.lastName}</p>
-            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+            <p className="truncate text-sm font-semibold text-white">{user?.firstName} {user?.lastName}</p>
+            <p className="truncate text-xs text-slate-400">{user?.email}</p>
           </div>
         </div>
         {user?.organizationName && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
+          <div className="mb-3 flex items-center gap-1.5 text-xs text-slate-400">
             <Building2 className="h-3 w-3 shrink-0" />
             <span className="truncate">{user.organizationName}</span>
           </div>
@@ -76,7 +76,7 @@ export function VerifierLayout() {
         <Button
           variant="outline"
           size="sm"
-          className="w-full justify-center text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+          className="w-full justify-center border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
           onClick={handleLogout}
         >
           <LogOut className="h-4 w-4 mr-2" />
@@ -87,9 +87,9 @@ export function VerifierLayout() {
   );
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex min-h-screen flex-col portal-shell-bg">
       {/* Mobile Top Bar */}
-      <header className="lg:hidden sticky top-0 z-40 border-b bg-white">
+      <header className="sticky top-0 z-40 border-b bg-white/85 backdrop-blur lg:hidden">
         <div className="flex items-center justify-between px-4 h-14">
           <button onClick={() => setSidebarOpen(true)} className="p-2 -ml-2 rounded-md hover:bg-muted">
             <Menu className="h-5 w-5" />
@@ -112,7 +112,7 @@ export function VerifierLayout() {
         {sidebarOpen && (
           <div className="fixed inset-0 z-50 lg:hidden">
             <div className="absolute inset-0 bg-black/50" onClick={closeSidebar} />
-            <aside className="relative w-72 h-full bg-white flex flex-col shadow-xl animate-fade-in">
+            <aside className="portal-sidebar relative flex h-full w-72 flex-col shadow-xl animate-fade-in">
               <button
                 onClick={closeSidebar}
                 className="absolute top-3 right-3 p-1.5 rounded-md hover:bg-muted z-10"
@@ -125,12 +125,12 @@ export function VerifierLayout() {
         )}
 
         {/* Desktop Sidebar */}
-        <aside className="hidden lg:flex w-64 border-r bg-white flex-col shrink-0">
+        <aside className="portal-sidebar hidden w-72 shrink-0 flex-col lg:flex">
           <SidebarContent />
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-4 md:p-6 bg-gray-50/50 overflow-auto">
+        <main className="flex-1 overflow-auto p-4 md:p-7">
           <Outlet />
         </main>
       </div>

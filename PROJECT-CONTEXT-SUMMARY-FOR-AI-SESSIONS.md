@@ -301,10 +301,14 @@ Major UI components added/upgraded:
 - `components/shared/TrustCommandCenter.tsx` — cinematic landing hero / blockchain command center.
 - `components/shared/VerificationIntelligencePanel.tsx` — trust explanation overlay on verify page.
 - `components/shared/BlockchainVerificationVisualizer.tsx` — immersive file verification animation.
+- `components/shared/RadialOrbitalTimeline.tsx` — experimental Egypt Vision 2030 orbital trust lifecycle timeline for A/B testing.
+- `pages/public/Vision2030ExperiencePage.tsx` — Version B experimental route at `/vision2030`.
+- `experiments/vision2030.ts` — feature-flag/analytics-ready experiment metadata and event dispatcher.
 
 Main public pages:
 
 - `pages/public/LandingPage.tsx`
+- `pages/public/Vision2030ExperiencePage.tsx` — A/B Version B, available at `/vision2030`; Version A remains `/`.
 - `pages/public/VerifyPage.tsx`
 - `pages/public/BlockchainExplorerPage.tsx`
 - `pages/public/OnboardingPage.tsx`

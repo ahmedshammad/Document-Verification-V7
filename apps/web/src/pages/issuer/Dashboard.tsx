@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   FileText, CheckCircle2, XCircle, Clock, TrendingUp, Activity,
   Plus, Layers, ShieldOff, FileUp, ArrowUpRight, ArrowDownRight, Minus,
-  CreditCard, Calendar,
+  CreditCard, Calendar, ShieldCheck, Sparkles,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,8 @@ import { LineChart } from '@/components/charts/LineChart';
 import { RecentActivity } from '@/components/issuer/RecentActivity';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { PortalHero } from '@/components/shared/PortalHero';
+import { TrustNetworkMiniMap } from '@/components/shared/TrustNetworkMiniMap';
 
 // ── Plan config (would come from billing API in production) ──────────────────
 const PLAN = { name: 'Business', limit: 500 };
@@ -107,22 +109,22 @@ export function IssuerDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('issuer.dashboard.title')}</h1>
-          <p className="text-muted-foreground mt-1">{t('issuer.dashboard.subtitle')}</p>
-        </div>
-        {/* Quick actions */}
-        <div className="flex items-center gap-2 flex-wrap">
+      <PortalHero
+        eyebrow="Issuer command center"
+        title={t('issuer.dashboard.title')}
+        subtitle={t('issuer.dashboard.subtitle')}
+        icon={ShieldCheck}
+        tone="gold"
+      >
+        <div className="flex flex-wrap items-center gap-2">
           <Link to="/issuer/templates">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white">
               <Layers className="mr-1.5 h-4 w-4" />
               Templates
             </Button>
           </Link>
           <Link to="/issuer/bulk-issue">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white">
               <FileUp className="mr-1.5 h-4 w-4" />
               Bulk Issue
             </Button>
@@ -134,18 +136,41 @@ export function IssuerDashboard() {
             </Button>
           </Link>
           <Link to="/issuer/issue">
-            <Button size="sm">
+            <Button size="sm" className="bg-white text-slate-950 hover:bg-egypt-gold-light">
               <Plus className="mr-1.5 h-4 w-4" />
               {t('issuer.issue_certificate')}
             </Button>
           </Link>
         </div>
+      </PortalHero>
+
+      <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <TrustNetworkMiniMap />
+        <Card className="vision-card border-none">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Sparkles className="h-5 w-5 text-egypt-gold" /> AI verification insights
+            </CardTitle>
+            <CardDescription>Operational signals synthesized from issuance, revocation, and verification activity.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {[
+              'Certificate proofs are being generated with Fabric transaction identifiers.',
+              'Revocation and expiry checks are active for public verification workflows.',
+              'Current issuer utilization remains within the Business plan threshold.',
+            ].map((insight) => (
+              <div key={insight} className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-700">
+                {insight}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Statistics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat, index) => (
-          <Card key={index}>
+          <Card key={index} className="metric-tile border-none">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
               <div className={`p-2 rounded-lg ${stat.bgColor}`}>

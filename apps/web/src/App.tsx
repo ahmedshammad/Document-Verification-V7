@@ -24,6 +24,7 @@ import { AboutPage } from './pages/public/AboutPage';
 import { ContactPage } from './pages/public/ContactPage';
 import { OnboardingPage } from './pages/public/OnboardingPage';
 import { BlockchainExplorerPage } from './pages/public/BlockchainExplorerPage';
+import { Vision2030ExperiencePage } from './pages/public/Vision2030ExperiencePage';
 
 // Issuer Portal Pages
 import { IssuerDashboard } from './pages/issuer/Dashboard';
@@ -99,6 +100,7 @@ function App() {
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/blockchain" element={<BlockchainExplorerPage />} />
+            <Route path="/vision2030" element={<Vision2030ExperiencePage />} />
           </Route>
 
           {/* Issuer Portal */}

@@ -7,9 +7,10 @@ import * as path from 'path';
 @Injectable()
 export class FabricService implements OnModuleInit {
   private readonly logger = new Logger(FabricService.name);
-  private gateway!: Gateway;
-  private contract!: Contract;
-  private network!: Network;
+  private gateway?: Gateway;
+  private contract?: Contract;
+  private network?: Network;
+  private connecting?: Promise<void>;
 
   constructor(private configService: ConfigService) {}
 
@@ -27,6 +28,22 @@ export class FabricService implements OnModuleInit {
   }
 
   private async connect() {
+    if (this.connecting) return this.connecting;
+    this.connecting = this.doConnect().finally(() => {
+      this.connecting = undefined;
+    });
+    return this.connecting;
+  }
+
+  private async doConnect() {
+    if (this.gateway) {
+      try {
+        this.gateway.disconnect();
+      } catch {
+        // ignore stale gateway disconnect errors
+      }
+    }
+
     // Load connection profile
     const ccpPath = this.configService.get<string>('FABRIC_CONNECTION_PROFILE_PATH');
     if (!ccpPath || !fs.existsSync(ccpPath)) {
@@ -89,6 +106,12 @@ export class FabricService implements OnModuleInit {
     }
   }
 
+  private async ensureConnectedOrReconnect() {
+    if (this.contract) return;
+    await this.connect();
+    this.ensureConnected();
+  }
+
   // ============================================================================
   // Certificate Operations
   // ============================================================================
@@ -104,9 +127,9 @@ export class FabricService implements OnModuleInit {
     expiresAt: string,
     signatureProofRef: string,
   ): Promise<string> {
-    this.ensureConnected();
+    await this.ensureConnectedOrReconnect();
     try {
-      const transaction = this.contract.createTransaction('IssueCertificate');
+      const transaction = this.contract!.createTransaction('IssueCertificate');
       const transactionId = transaction.getTransactionId();
       await transaction.submit(
         certId,
@@ -128,9 +151,9 @@ export class FabricService implements OnModuleInit {
   }
 
   async getCertificateRecord(certId: string): Promise<any> {
-    this.ensureConnected();
+    await this.ensureConnectedOrReconnect();
     try {
-      const result = await this.contract.evaluateTransaction('GetCertificateRecord', certId);
+      const result = await this.contract!.evaluateTransaction('GetCertificateRecord', certId);
       return this.parseJsonResult(result);
     } catch (error) {
       this.logger.error(`Failed to get certificate ${certId}`, error);
@@ -139,9 +162,9 @@ export class FabricService implements OnModuleInit {
   }
 
   async verifyCertificateRecord(certId: string, presentedHash?: string): Promise<any> {
-    this.ensureConnected();
+    await this.ensureConnectedOrReconnect();
     try {
-      const result = await this.contract.evaluateTransaction(
+      const result = await this.contract!.evaluateTransaction(
         'VerifyCertificateRecord',
         certId,
         presentedHash || '',
@@ -158,9 +181,9 @@ export class FabricService implements OnModuleInit {
     reasonCode: string,
     reasonText: string,
   ): Promise<void> {
-    this.ensureConnected();
+    await this.ensureConnectedOrReconnect();
     try {
-      await this.contract.submitTransaction('RevokeCertificate', certId, reasonCode, reasonText);
+      await this.contract!.submitTransaction('RevokeCertificate', certId, reasonCode, reasonText);
       this.logger.log(`Certificate ${certId} revoked successfully on blockchain`);
     } catch (error) {
       this.logger.error(`Failed to revoke certificate ${certId}`, error);
@@ -173,9 +196,9 @@ export class FabricService implements OnModuleInit {
     pageSize: number = 20,
     bookmark: string = '',
   ): Promise<any> {
-    this.ensureConnected();
+    await this.ensureConnectedOrReconnect();
     try {
-      const result = await this.contract.evaluateTransaction(
+      const result = await this.contract!.evaluateTransaction(
         'ListCertificatesByHolder',
         holderId,
         pageSize.toString(),
@@ -193,9 +216,9 @@ export class FabricService implements OnModuleInit {
     pageSize: number = 20,
     bookmark: string = '',
   ): Promise<any> {
-    this.ensureConnected();
+    await this.ensureConnectedOrReconnect();
     try {
-      const result = await this.contract.evaluateTransaction(
+      const result = await this.contract!.evaluateTransaction(
         'ListCertificatesByIssuer',
         issuerOrgId,
         pageSize.toString(),
@@ -209,9 +232,9 @@ export class FabricService implements OnModuleInit {
   }
 
   async getCertificateHistory(certId: string): Promise<any> {
-    this.ensureConnected();
+    await this.ensureConnectedOrReconnect();
     try {
-      const result = await this.contract.evaluateTransaction('GetCertificateHistory', certId);
+      const result = await this.contract!.evaluateTransaction('GetCertificateHistory', certId);
       return JSON.parse(result.toString());
     } catch (error) {
       this.logger.error(`Failed to get history for certificate ${certId}`, error);
@@ -231,9 +254,9 @@ export class FabricService implements OnModuleInit {
     contactEmail: string,
     contactPerson: string,
   ): Promise<void> {
-    this.ensureConnected();
+    await this.ensureConnectedOrReconnect();
     try {
-      await this.contract.submitTransaction(
+      await this.contract!.submitTransaction(
         'RegisterIssuer',
         issuerOrgId,
         displayName,
@@ -250,9 +273,9 @@ export class FabricService implements OnModuleInit {
   }
 
   async getIssuer(issuerOrgId: string): Promise<any> {
-    this.ensureConnected();
+    await this.ensureConnectedOrReconnect();
     try {
-      const result = await this.contract.evaluateTransaction('GetIssuer', issuerOrgId);
+      const result = await this.contract!.evaluateTransaction('GetIssuer', issuerOrgId);
       return this.parseJsonResult(result);
     } catch (error) {
       this.logger.error(`Failed to get issuer ${issuerOrgId}`, error);
@@ -276,9 +299,9 @@ export class FabricService implements OnModuleInit {
     validityDaysDefault: number,
     category: string,
   ): Promise<string> {
-    this.ensureConnected();
+    await this.ensureConnectedOrReconnect();
     try {
-      const transaction = this.contract.createTransaction('CreateTemplate');
+      const transaction = this.contract!.createTransaction('CreateTemplate');
       const transactionId = transaction.getTransactionId();
       await transaction.submit(
         templateId,
@@ -301,9 +324,9 @@ export class FabricService implements OnModuleInit {
   }
 
   async getTemplate(templateId: string, version: string): Promise<any> {
-    this.ensureConnected();
+    await this.ensureConnectedOrReconnect();
     try {
-      const result = await this.contract.evaluateTransaction('GetTemplate', templateId, version);
+      const result = await this.contract!.evaluateTransaction('GetTemplate', templateId, version);
       return this.parseJsonResult(result);
     } catch (error) {
       this.logger.error(`Failed to get template ${templateId} v${version}`, error);
@@ -316,14 +339,14 @@ export class FabricService implements OnModuleInit {
   // ============================================================================
 
   async listenForEvents(eventName: string, callback: (event: any) => void) {
-    this.ensureConnected();
+    await this.ensureConnectedOrReconnect();
     const listener = async (event: any) => {
       const payload = event.payload ? JSON.parse(event.payload.toString()) : {};
       this.logger.log(`Event ${eventName} received:`, payload);
       callback({ ...event, payload });
     };
 
-    await this.contract.addContractListener(listener);
+    await this.contract!.addContractListener(listener);
 
     this.logger.log(`Listening for ${eventName} events`);
   }
@@ -345,7 +368,11 @@ export class FabricService implements OnModuleInit {
     error?: string;
   }> {
     if (!this.contract) {
-      return { connected: false, error: 'Not connected to Fabric network' };
+      try {
+        await this.connect();
+      } catch (error: any) {
+        return { connected: false, error: error.message || 'Not connected to Fabric network' };
+      }
     }
 
     try {
@@ -390,7 +417,7 @@ export class FabricService implements OnModuleInit {
 
     try {
       // Method 2: Use qscc system chaincode
-      const qscc = this.network.getContract('qscc');
+      const qscc = this.network!.getContract('qscc');
       const result = await qscc.evaluateTransaction('GetChainInfo', channelName);
       if (result && result.length > 0) {
         // The result is protobuf-encoded BlockchainInfo
@@ -428,6 +455,7 @@ export class FabricService implements OnModuleInit {
   }
 
   async getBlockInfo(blockNumber: number): Promise<any> {
+    await this.ensureConnectedOrReconnect();
     if (!this.network) {
       throw new Error('Not connected to Fabric network');
     }
@@ -446,7 +474,7 @@ export class FabricService implements OnModuleInit {
     try {
       // Fallback: use qscc system chaincode
       const channelName = this.configService.get<string>('FABRIC_CHANNEL_NAME', 'certificates');
-      const qscc = this.network.getContract('qscc');
+      const qscc = this.network!.getContract('qscc');
       const result = await qscc.evaluateTransaction(
         'GetBlockByNumber',
         channelName,
@@ -507,6 +535,7 @@ export class FabricService implements OnModuleInit {
   }
 
   async getRecentBlocks(count: number = 5): Promise<any[]> {
+    await this.ensureConnectedOrReconnect();
     if (!this.network) {
       throw new Error('Not connected to Fabric network');
     }
@@ -532,14 +561,17 @@ export class FabricService implements OnModuleInit {
   }
 
   getContract(): Contract {
-    return this.contract;
+    this.ensureConnected();
+    return this.contract!;
   }
 
   getNetwork(): Network {
+    if (!this.network) throw new Error('Fabric network is not connected');
     return this.network;
   }
 
   getGateway(): Gateway {
+    if (!this.gateway) throw new Error('Fabric gateway is not connected');
     return this.gateway;
   }
 

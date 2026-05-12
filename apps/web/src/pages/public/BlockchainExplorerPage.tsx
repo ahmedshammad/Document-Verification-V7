@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { certificateApi } from '@/services/api/certificates';
 import { cn } from '@/lib/utils';
+import { TrustNetworkMiniMap } from '@/components/shared/TrustNetworkMiniMap';
 
 type BlockchainStatus = {
   timestamp: string;
@@ -91,22 +92,24 @@ export function BlockchainExplorerPage() {
   return (
     <div>
       {/* Hero */}
-      <section className="gradient-hero-subtle py-12 md:py-16 px-4">
-        <div className="container mx-auto max-w-4xl text-center">
-          <Badge variant="navy" className="mb-4">
+      <section className="relative overflow-hidden bg-slate-950 px-4 py-14 text-white md:py-20">
+        <div className="absolute inset-0 premium-mesh opacity-80" />
+        <div className="absolute inset-0 trust-grid" />
+        <div className="relative container mx-auto max-w-4xl text-center">
+          <Badge className="mb-4 border-white/15 bg-white/10 text-white backdrop-blur">
             <Layers className="h-3.5 w-3.5 mr-1.5" />
             Blockchain Explorer
           </Badge>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-3">
+          <h1 className="text-4xl font-black tracking-tight md:text-6xl">
             Blockchain Network Status
           </h1>
-          <p className="text-muted-foreground">
+          <p className="mx-auto mt-4 max-w-2xl text-slate-300">
             View the live status of the Hyperledger Fabric network and browse on-chain blocks.
           </p>
         </div>
       </section>
 
-      <div className="container mx-auto max-w-4xl py-8 px-4 space-y-6">
+      <div className="container mx-auto max-w-6xl py-8 px-4 space-y-6">
         {/* Refresh Button */}
         <div className="flex justify-end">
           <Button variant="outline" size="sm" onClick={refreshAll} disabled={loading || blocksLoading}>
@@ -116,7 +119,8 @@ export function BlockchainExplorerPage() {
         </div>
 
         {/* Network Status */}
-        <Card>
+        <div className="grid gap-4 lg:grid-cols-[1fr_0.85fr]">
+        <Card className="vision-card border-none">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Activity className="h-5 w-5" />
@@ -209,9 +213,11 @@ export function BlockchainExplorerPage() {
             )}
           </CardContent>
         </Card>
+        <TrustNetworkMiniMap connected={connected} />
+        </div>
 
         {/* Block Explorer */}
-        <Card>
+        <Card className="vision-card border-none">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>

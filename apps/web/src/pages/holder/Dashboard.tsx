@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { FileText, ExternalLink, ShieldCheck, ArrowRight } from 'lucide-react';
+import { FileText, ExternalLink, ShieldCheck, ArrowRight, WalletCards } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { certificateApi } from '@/services/api/certificates';
+import { PortalHero } from '@/components/shared/PortalHero';
+import { TrustNetworkMiniMap } from '@/components/shared/TrustNetworkMiniMap';
 
 // WCAG AA-compliant status badge colors (≥ 4.5:1 contrast)
 const statusColors: Record<string, string> = {
@@ -44,10 +46,22 @@ export function HolderDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t('holder.dashboard.title')}</h1>
-        <p className="text-muted-foreground mt-1">{t('holder.dashboard.subtitle')}</p>
-      </div>
+      <PortalHero
+        eyebrow="SME credential wallet"
+        title={t('holder.dashboard.title')}
+        subtitle={t('holder.dashboard.subtitle')}
+        icon={WalletCards}
+        tone="green"
+      >
+        <Link to="/verify">
+          <Button className="bg-white text-slate-950 hover:bg-egypt-gold-light">
+            Verify externally
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </Link>
+      </PortalHero>
+
+      <TrustNetworkMiniMap title="Credential trust fabric" subtitle="Every wallet certificate can be independently verified" />
 
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -62,7 +76,7 @@ export function HolderDashboard() {
             status: string;
             issuedAt?: string;
           }) => (
-            <Card key={cert.id} className="hover:shadow-md transition-shadow">
+            <Card key={cert.id} className="vision-card border-none">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <FileText className="h-8 w-8 text-primary" aria-hidden="true" />

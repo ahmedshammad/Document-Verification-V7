@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, CheckCircle2, XCircle, AlertTriangle, QrCode } from 'lucide-react';
+import { Search, CheckCircle2, XCircle, AlertTriangle, QrCode, Radar, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { certificateApi } from '@/services/api/certificates';
+import { PortalHero } from '@/components/shared/PortalHero';
+import { VerificationIntelligencePanel } from '@/components/shared/VerificationIntelligencePanel';
+import { TrustNetworkMiniMap } from '@/components/shared/TrustNetworkMiniMap';
 
 type VerifyResult = {
   status: string;
@@ -37,12 +40,20 @@ export function VerifierDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t('verifier.dashboard.title')}</h1>
-        <p className="text-muted-foreground mt-1">{t('verifier.dashboard.subtitle')}</p>
+      <PortalHero
+        eyebrow="Verifier intelligence desk"
+        title={t('verifier.dashboard.title')}
+        subtitle={t('verifier.dashboard.subtitle')}
+        icon={Radar}
+        tone="blue"
+      />
+
+      <div className="grid gap-4 lg:grid-cols-[1fr_0.9fr]">
+        <VerificationIntelligencePanel method="id" resultStatus={result?.status} />
+        <TrustNetworkMiniMap title="Verification consensus mesh" subtitle="Live validation path across Fabric organizations" />
       </div>
 
-      <Card>
+      <Card className="vision-card border-none">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Search className="h-5 w-5" />
@@ -78,7 +89,7 @@ export function VerifierDashboard() {
       )}
 
       {result && (
-        <Card>
+        <Card className="vision-card border-none">
           <CardContent className="py-6">
             <div className={`flex items-center gap-3 p-4 rounded-lg ${
               result.status === 'VALID' ? 'bg-green-50' :

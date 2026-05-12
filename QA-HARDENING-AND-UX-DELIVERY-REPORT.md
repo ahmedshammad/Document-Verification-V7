@@ -24,7 +24,15 @@ The platform has been validated end-to-end using the official `scripts/start_all
 ## UI/UX transformation delivered
 
 - Replaced the traditional landing hero with a cinematic **Trust Command Center** featuring glass panels, animated topology, proof-chain storytelling, telemetry, and enterprise trust signals.
+- Preserved the existing homepage as **Version A** and added a separate experimental **Version B** route at `/vision2030` for A/B testing.
+- Implemented an immersive **Radial Orbital Timeline** inspired by the requested 21st.dev component, but redesigned specifically for the certificate blockchain lifecycle: upload, SHA-256 hashing, Fabric transaction creation, node validation, consensus, ledger recording, AI analysis, and trust confirmation.
+- Added analytics/feature-flag-ready experiment metadata in `apps/web/src/experiments/vision2030.ts`.
+- Rebalanced `/vision2030` so the orbital visualization uses a tighter viewport-aware grid, smaller orbital nodes, denser side-panel hierarchy, and less vertical dead space.
+- Expanded `/vision2030` beyond a component demo into a full ecosystem page with national digital trust messaging, consortium/governance cards, real-time trust metrics, and verification transparency sections.
 - Added a premium **Verification Intelligence Overlay** on the verification page to explain method, network, trust score, and evidence layers.
+- Added unified portal design primitives: **PortalHero**, **TrustNetworkMiniMap**, `vision-card`, `portal-shell-bg`, and premium dark command sidebars.
+- Upgraded issuer, holder, and verifier dashboards into Egypt Vision 2030 command-center experiences with live trust maps, AI-style insights, and premium card systems.
+- Upgraded Blockchain Explorer hero/status layout with cinematic dark mesh styling and a live topology minimap.
 - Preserved and integrated the advanced blockchain visualizer for uploaded-file verification.
 - Added motion utilities, glassmorphism/neomorphic styling, reduced-motion support, trust grid, scanline, orbit, and edge propagation animations.
 - Improved verification trust comprehension with progressive disclosure and report/evidence affordances.
@@ -46,6 +54,10 @@ The platform has been validated end-to-end using the official `scripts/start_all
   - IPFS store/retrieve smoke: passed.
   - End-to-end issue/verify flow: template creation, certificate issuance, on-chain record query, API verification with Fabric tx id.
   - Concurrent verification stress smoke: rate limiting activated as expected (`200` + `429`).
+  - SPA route smoke for `/`, `/verify`, `/blockchain`, `/issuer`, `/holder`, `/verifier`: `200 OK` with React root rendered.
+  - A/B experiment route `/vision2030`: `200 OK`, React root rendered, deployed bundle contains lifecycle strings.
+  - Blockchain page regression after Docker storage move fixed: Fabric containers restarted, API reconnect resilience added, `/api/health/blockchain` returns connected with channel/chaincode/block height, recent blocks endpoint returns live blocks.
+  - Final E2E Fabric smoke: issue certificate → record on chain with Fabric tx id → verify valid → revoke → verify revoked.
 
 ## Security and production hardening implemented
 

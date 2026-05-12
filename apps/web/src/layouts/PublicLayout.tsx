@@ -15,6 +15,7 @@ const platformLinks = [
   { to: '/how-it-works', label: 'How It Works' },
   { to: '/docs', label: 'Documentation' },
   { to: '/blockchain', label: 'Blockchain Explorer' },
+  { to: '/vision2030', label: 'Vision 2030 Lab' },
 ];
 
 const businessLinks = [
