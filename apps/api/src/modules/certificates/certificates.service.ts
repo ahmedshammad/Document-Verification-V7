@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import * as crypto from 'crypto';
 import { ConfigService } from '@nestjs/config';
@@ -135,13 +135,18 @@ export class CertificatesService {
     }
 
     const certId = uuidv4();
+    const issuedAt = new Date();
+    const expiresAt = new Date(
+      issuedAt.getTime() + Math.max(template.validityDaysDefault || 365, 1) * 24 * 60 * 60 * 1000,
+    );
+
     const certHash = crypto
       .createHash('sha256')
       .update(JSON.stringify({
         ...(data.data || {}),
         certId,
         documentHash: data.documentHash,
-        timestamp: new Date().toISOString(),
+        timestamp: issuedAt.toISOString(),
       }))
       .digest('hex');
 
@@ -166,7 +171,8 @@ export class CertificatesService {
             documentSize: data.documentSize,
           },
           contentPointer: data.documentHash ? `hash://${data.documentHash}` : 'ipfs://pending',
-          issuedAt: new Date(),
+          issuedAt,
+          expiresAt,
           verificationUrl: `${this.configService.get<string>('APP_URL', 'http://localhost:3000')}/verify/${certId}`,
         },
       });
@@ -179,17 +185,22 @@ export class CertificatesService {
 
     // Record on blockchain (best-effort)
     try {
-      await this.fabricService.issueCertificate(
+      await this.ensureTemplateOnChain(template);
+      const txId = await this.fabricService.issueCertificate(
         certId,
         template.templateId,
         data.templateVersion || template.version || '1',
         certId,
         certHash,
         data.documentHash ? `hash://${data.documentHash}` : 'ipfs://pending',
-        new Date().toISOString(),
-        '',
-        '',
+        issuedAt.toISOString(),
+        expiresAt.toISOString(),
+        'api-signature-proof-pending',
       );
+      certificate = await this.prisma.certificate.update({
+        where: { id: certificate.id },
+        data: { txId },
+      });
       this.logger.log(`Certificate ${certId} recorded on blockchain`);
     } catch (error: any) {
       this.logger.warn(`Blockchain recording deferred for certificate ${certId}: ${error.message}`);
@@ -216,6 +227,33 @@ export class CertificatesService {
     };
   }
 
+  private async ensureTemplateOnChain(template: any): Promise<void> {
+    if (template.publishedToChain) return;
+
+    try {
+      await this.fabricService.createTemplate(
+        template.templateId,
+        template.version,
+        template.displayName,
+        template.description,
+        template.jsonSchema,
+        template.uiSchema || {},
+        template.requiredClaims || [],
+        template.issuerConstraints || [],
+        template.validityDaysDefault || 365,
+        template.category || 'general',
+      );
+      await this.prisma.template.update({
+        where: { id: template.id },
+        data: { publishedToChain: true, active: true },
+      });
+      this.logger.log(`Template ${template.templateId} auto-published on blockchain before issuance`);
+    } catch (error: any) {
+      this.logger.warn(`Template ${template.templateId} blockchain publication deferred: ${error.message}`);
+      throw error;
+    }
+  }
+
   async findById(id: string) {
     // Try by DB id first, then by certId
     let cert = await this.prisma.certificate.findUnique({
@@ -233,6 +271,10 @@ export class CertificatesService {
   }
 
   async verifyByHash(hash: string) {
+    if (!hash || !/^[a-fA-F0-9]{64}$/.test(hash)) {
+      throw new BadRequestException('A valid SHA-256 hash is required');
+    }
+
     // Search by certHash first
     let cert = await this.prisma.certificate.findFirst({
       where: { certHash: hash },
@@ -370,10 +412,11 @@ export class CertificatesService {
   async revoke(id: string, reason: string, userId?: string, organizationId?: string) {
     const cert = await this.findById(id);
     const resolvedUserId = userId || await this.resolveIssuerId();
+    const reasonCode = this.normalizeRevocationReason(reason);
 
     // Enforce org-scoped ownership: issuer can only revoke their own org's certificates
     if (organizationId && cert.organizationId !== organizationId) {
-      throw new Error('Forbidden: certificate does not belong to your organization');
+      throw new ForbiddenException('Certificate does not belong to your organization');
     }
 
     await this.prisma.certificate.update({
@@ -382,7 +425,7 @@ export class CertificatesService {
     });
 
     try {
-      await this.fabricService.revokeCertificate(cert.certId, reason, reason);
+      await this.fabricService.revokeCertificate(cert.certId, reasonCode, reason || reasonCode);
     } catch {
       this.logger.warn(`Blockchain revocation deferred for ${id}`);
     }
@@ -400,6 +443,30 @@ export class CertificatesService {
     }
 
     return { success: true };
+  }
+
+  private normalizeRevocationReason(reason?: string): string {
+    const raw = (reason || 'OTHER').toUpperCase().replace(/[^A-Z_]/g, '_');
+    const aliases: Record<string, string> = {
+      FRAUDULENT: 'COMPROMISED',
+      FRAUD: 'COMPROMISED',
+      DATA_ERROR: 'ERROR_IN_DATA',
+      ERROR: 'ERROR_IN_DATA',
+      BUSINESS_CLOSED: 'CESSATION',
+      EXPIRED: 'SUPERSEDED',
+      REQUESTED_BY_HOLDER: 'PRIVILEGE_WITHDRAWN',
+    };
+    const valid = new Set([
+      'COMPROMISED',
+      'SUPERSEDED',
+      'CESSATION',
+      'PRIVILEGE_WITHDRAWN',
+      'AFFILIATION_CHANGED',
+      'ERROR_IN_DATA',
+      'OTHER',
+    ]);
+    const mapped = aliases[raw] || raw;
+    return valid.has(mapped) ? mapped : 'OTHER';
   }
 
   async getIssuerStats(organizationId?: string) {
@@ -421,6 +488,7 @@ export class CertificatesService {
   }
 
   async getRecent(organizationId?: string, limit = 10) {
+    limit = Math.min(Math.max(Number(limit) || 10, 1), 100);
     const where = organizationId ? { organizationId } : {};
     return this.prisma.certificate.findMany({
       where,

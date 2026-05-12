@@ -55,8 +55,8 @@ export class OrganizationsService {
     const orgId = `org-${uuidv4().split('-')[0]}`; // Short readable ID e.g. org-a1b2c3d4
     const mspId = `${orgId.replace('org-', 'Org')}MSP`; // e.g. Orga1b2c3d4MSP
 
-    // Hash the admin password
-    const bcrypt = await import('bcrypt');
+    // Hash the admin password. bcryptjs avoids native Alpine/glibc ABI crashes.
+    const bcrypt = await import('bcryptjs');
     const passwordHash = await bcrypt.hash(dto.adminPassword, 12);
 
     // Create org + admin user in a transaction

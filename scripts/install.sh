@@ -45,7 +45,7 @@ NETWORK_DIR="$APP_DIR/blockchain/network"
 COMPOSE_DIR="$APP_DIR/infra/compose"
 FABRIC_COMPOSE="$NETWORK_DIR/docker/docker-compose-fabric.yaml"
 APP_COMPOSE="$COMPOSE_DIR/compose.yaml"
-ENV_FILE="$COMPOSE_DIR/.env"
+ENV_FILE="$APP_DIR/.env"
 SCRIPTS="$NETWORK_DIR/scripts"
 
 FABRIC_VERSION="2.5.9"
@@ -294,9 +294,9 @@ peer chaincode invoke \
 
 sleep 6
 VERIFY=$(peer chaincode query -C certificates -n certificate_contract \
-  -c '{"function":"GetIssuer","Args":["org1-ministry"]}' 2>&1 || echo "")
-echo "$VERIFY" | grep -q "org1-ministry" \
-  && ok "Ledger initialized — org1-ministry confirmed on-chain" \
+  -c '{"function":"GetIssuer","Args":["org1"]}' 2>&1 || echo "")
+echo "$VERIFY" | grep -q "org1" \
+  && ok "Ledger initialized — org1 confirmed on-chain" \
   || warn "Ledger verify returned unexpected data — may be a timing issue, run verify manually later"
 
 # =============================================================================
@@ -398,8 +398,8 @@ LC_ALL=C tr -cd '\11\12\15\40-\176' < "$APP_COMPOSE" > /tmp/_clean && mv /tmp/_c
 # ── Build and start application stack ─────────────────────────────────────────
 info "Building Docker images and starting app stack (3-6 min on first run)..."
 cd "$COMPOSE_DIR"
-docker compose down 2>/dev/null || true
-docker compose up -d --build
+docker compose --env-file "$ENV_FILE" down 2>/dev/null || true
+docker compose --env-file "$ENV_FILE" up -d --build
 ok "App stack started (8 services)"
 
 # =============================================================================
@@ -408,25 +408,25 @@ banner "Phase 8/9 — Database Migration"
 
 info "Waiting for PostgreSQL to be ready (60s max)..."
 ELAPSED=0
-until docker compose exec -T postgres pg_isready -U smeuser -d smecertdb &>/dev/null; do
+until docker compose --env-file "$ENV_FILE" exec -T postgres pg_isready -U smeuser -d smecertdb &>/dev/null; do
   sleep 3; ELAPSED=$((ELAPSED + 3))
   [ "$ELAPSED" -ge 60 ] && fail "PostgreSQL did not become ready within 60s. Check: docker logs sme-cert-postgres"
 done
 ok "PostgreSQL is ready"
 
 info "Applying Prisma schema (creates all tables)..."
-docker compose exec -T api npx prisma db push \
+docker compose --env-file "$ENV_FILE" exec -T api npx prisma db push \
     --schema=/app/prisma/schema.prisma \
     --accept-data-loss 2>&1 | tail -3 \
   && ok "Database schema applied" \
-  || warn "Prisma db push returned errors — check: docker compose exec api npx prisma db push"
+  || warn "Prisma db push returned errors — check: docker compose --env-file $ENV_FILE exec api npx prisma db push"
 
 info "Seeding demo organizations and users..."
-docker compose exec -T api npx ts-node \
+docker compose --env-file "$ENV_FILE" exec -T api npx ts-node \
     --transpile-only --compiler-options '{"module":"commonjs"}' \
     prisma/seed.ts 2>&1 | tail -5 \
   && ok "Demo data seeded (admin@platform.local / Admin123!, issuer@msmeda.gov.eg / Demo123!)" \
-  || warn "Seed failed — run manually: docker compose exec api npx ts-node --transpile-only --compiler-options '{\"module\":\"commonjs\"}' prisma/seed.ts"
+  || warn "Seed failed — run manually: docker compose --env-file $ENV_FILE exec api npx ts-node --transpile-only --compiler-options '{\"module\":\"commonjs\"}' prisma/seed.ts"
 
 info "Waiting for NestJS API to become healthy (120s max)..."
 ELAPSED=0; API_UP=false

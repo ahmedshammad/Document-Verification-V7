@@ -1,9 +1,11 @@
-import { Controller, Post, Get, Param, Body } from '@nestjs/common';
+import { BadRequestException, Controller, Post, Get, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
 import { StorageService } from './storage.service';
 
 @ApiTags('Storage')
 @ApiBearerAuth('JWT-auth')
+@UseGuards(AuthGuard('jwt'))
 @Controller({ path: 'storage', version: '1' })
 export class StorageController {
   constructor(private storageService: StorageService) {}
@@ -11,6 +13,9 @@ export class StorageController {
   @Post('ipfs')
   @ApiOperation({ summary: 'Store data on IPFS' })
   async store(@Body() body: { data: string }) {
+    if (!body?.data || body.data.length > 10 * 1024 * 1024) {
+      throw new BadRequestException('Data is required and must not exceed 10 MB');
+    }
     const cid = await this.storageService.storeToIpfs(body.data);
     return { cid };
   }

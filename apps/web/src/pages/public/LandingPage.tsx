@@ -13,6 +13,7 @@ import { SectionHeading } from '@/components/shared/SectionHeading';
 import { StatCounter } from '@/components/shared/StatCounter';
 import { StepCard } from '@/components/shared/StepCard';
 import { CTABanner } from '@/components/shared/CTABanner';
+import { TrustCommandCenter } from '@/components/shared/TrustCommandCenter';
 
 const visionPillars = [
   { icon: Zap, title: 'Digital Transformation', description: 'Digitize certificate workflows with modern cloud and blockchain infrastructure.' },
@@ -52,41 +53,7 @@ export function LandingPage() {
   return (
     <div>
       {/* Hero Section */}
-      <section className="relative gradient-hero text-white py-20 md:py-28 px-4 overflow-hidden">
-        <div className="absolute inset-0 pattern-dots" />
-        <div className="relative container mx-auto text-center max-w-4xl">
-          <Badge variant="gold" className="mb-6 text-sm px-4 py-1.5">
-            <Award className="h-3.5 w-3.5 mr-1.5" />
-            Aligned with Egypt Vision 2030
-          </Badge>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 leading-tight">
-            Empowering Egypt's SMEs with{' '}
-            <span className="text-egypt-gold-light">Trusted Digital Certificates</span>
-          </h1>
-          <p className="text-lg md:text-xl text-white/80 mb-8 max-w-2xl mx-auto">
-            A blockchain-anchored certificate issuance and verification platform built for transparency,
-            compliance, and digital transformation.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/register">
-              <Button size="lg" className="bg-egypt-gold text-egypt-navy hover:bg-egypt-gold-light font-semibold">
-                Register Organization
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link to="/contact">
-              <Button size="lg" variant="outline" className="bg-transparent border-white/50 text-white hover:bg-white/15 hover:border-white hover:text-white">
-                Request Demo
-              </Button>
-            </Link>
-            <Link to="/verify">
-              <Button size="lg" variant="outline" className="bg-transparent border-egypt-gold/70 text-egypt-gold-light hover:bg-egypt-gold/15 hover:border-egypt-gold hover:text-egypt-gold-light">
-                Verify Certificate
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+      <TrustCommandCenter />
 
       {/* Supervision Note */}
       <div className="bg-egypt-navy/5 border-b border-egypt-navy/10">

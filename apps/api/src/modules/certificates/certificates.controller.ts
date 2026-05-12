@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Param, Body, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, ForbiddenException, Get, Post, Param, Body, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { CertificatesService } from './certificates.service';
 
 const ADMIN_ROLES = ['PLATFORM_ADMIN', 'CONSORTIUM_ADMIN'];
+const ISSUER_ROLES = ['ISSUER_ADMIN', 'ISSUER_OPERATOR'];
 const NO_ORG_SENTINEL = '00000000-0000-0000-0000-000000000000';
 
 @ApiTags('Certificates')
@@ -16,6 +17,9 @@ export class CertificatesController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Issue a new certificate' })
   issue(@Body() body: any, @Req() req: any) {
+    if (![...ADMIN_ROLES, ...ISSUER_ROLES].includes(req.user?.role)) {
+      throw new ForbiddenException('Only issuer roles can issue certificates.');
+    }
     return this.certificatesService.issue({
       ...body,
       issuerId: req.user?.id,
@@ -75,6 +79,9 @@ export class CertificatesController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Revoke a certificate' })
   revoke(@Param('id') id: string, @Body() body: { reason: string }, @Req() req: any) {
+    if (![...ADMIN_ROLES, 'ISSUER_ADMIN'].includes(req.user?.role)) {
+      throw new ForbiddenException('Only issuer administrators can revoke certificates.');
+    }
     return this.certificatesService.revoke(id, body.reason, req.user?.id, req.user?.organizationId);
   }
 }

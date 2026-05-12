@@ -42,7 +42,7 @@ NETWORK_DIR="$APP_DIR/blockchain/network"
 COMPOSE_DIR="$APP_DIR/infra/compose"
 FABRIC_COMPOSE="$NETWORK_DIR/docker/docker-compose-fabric.yaml"
 APP_COMPOSE="$COMPOSE_DIR/compose.yaml"
-ENV_FILE="$COMPOSE_DIR/.env"
+ENV_FILE="$APP_DIR/.env"
 
 export PATH="$PATH:/usr/local/bin:/usr/local/go/bin:$HOME/go/bin"
 
@@ -60,7 +60,7 @@ banner "SME Certificate Trust Platform — Restart"
 [ -f "$APP_COMPOSE" ]    || fail "App compose not found at $APP_COMPOSE"
 
 # .env must exist — restart does not regenerate secrets
-[ -f "$ENV_FILE" ] || fail ".env not found at $ENV_FILE\nThis VM has not been set up yet. Run install.sh first."
+[ -f "$ENV_FILE" ] || fail ".env not found at $ENV_FILE\nCopy .env.example to .env or run install.sh first."
 
 # Crypto material must exist — if missing the ledger is gone and you need a fresh install
 [ -d "$NETWORK_DIR/crypto-config/ordererOrganizations" ] \
@@ -122,19 +122,19 @@ banner "Step 3/4 — Application Stack (8 services)"
 
 info "Starting app services (postgres, ipfs, api, web, nginx, prometheus, grafana, otel)..."
 cd "$COMPOSE_DIR"
-docker compose up -d
+docker compose --env-file "$ENV_FILE" up -d
 ok "App stack containers started"
 
 info "Waiting for PostgreSQL to be ready..."
 ELAPSED=0
-until docker compose exec -T postgres pg_isready -U smeuser -d smecertdb &>/dev/null; do
+until docker compose --env-file "$ENV_FILE" exec -T postgres pg_isready -U smeuser -d smecertdb &>/dev/null; do
   sleep 3; ELAPSED=$((ELAPSED + 3))
   [ "$ELAPSED" -ge 60 ] && {
     warn "PostgreSQL not ready after 60s — check: docker logs sme-cert-postgres"
     break
   }
 done
-docker compose exec -T postgres pg_isready -U smeuser -d smecertdb &>/dev/null && ok "PostgreSQL ready"
+docker compose --env-file "$ENV_FILE" exec -T postgres pg_isready -U smeuser -d smecertdb &>/dev/null && ok "PostgreSQL ready"
 
 info "Waiting for NestJS API to become healthy (up to 120s)..."
 ELAPSED=0; API_UP=false
@@ -174,7 +174,7 @@ check_service "Grafana         :3001" "http://localhost:3001/api/health"
 echo ""
 echo -e "  ${CYAN}Fabric Containers:${NC}"
 FABRIC_UP=$(docker compose -f "$FABRIC_COMPOSE" ps --status running -q 2>/dev/null | wc -l || echo 0)
-APP_UP=$(docker compose -f "$APP_COMPOSE" ps --status running -q 2>/dev/null | wc -l || echo 0)
+APP_UP=$(docker compose --env-file "$ENV_FILE" -f "$APP_COMPOSE" ps --status running -q 2>/dev/null | wc -l || echo 0)
 echo -e "    ${GREEN}✓${NC} Fabric: $FABRIC_UP containers running"
 echo -e "    ${GREEN}✓${NC} App stack: $APP_UP containers running"
 
@@ -182,10 +182,10 @@ echo ""
 echo -e "  ${GREEN}${BOLD}Platform is up:${NC}  http://${VM_IP}"
 echo ""
 echo -e "  ${CYAN}Useful commands:${NC}"
-echo "    All app logs:     docker compose -f $APP_COMPOSE logs -f"
+echo "    All app logs:     docker compose --env-file $ENV_FILE -f $APP_COMPOSE logs -f"
 echo "    API logs:         docker logs sme-cert-api -f"
 echo "    Nginx logs:       docker logs sme-cert-nginx -f"
 echo "    Fabric logs:      docker logs peer0.org1.example.com -f"
 echo "    Container status: docker ps --format 'table {{.Names}}\t{{.Status}}'"
-echo "    Restart API only: docker compose -f $APP_COMPOSE restart api"
+echo "    Restart API only: docker compose --env-file $ENV_FILE -f $APP_COMPOSE restart api"
 echo ""

@@ -199,7 +199,7 @@ echo "Step 7: Testing chaincode with a simple invoke..."
 peer chaincode query \
     -C "$CHANNEL_NAME" \
     -n "$CC_NAME" \
-    -c '{"function":"GetIssuer","Args":["org1-ministry"]}' 2>&1 || {
+    -c '{"function":"GetIssuer","Args":["org1"]}' 2>&1 || {
         echo "  Note: Query returned empty (expected for a fresh ledger)"
     }
 

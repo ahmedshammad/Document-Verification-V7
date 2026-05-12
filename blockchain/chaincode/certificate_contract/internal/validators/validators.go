@@ -81,7 +81,10 @@ func ValidateContentPointer(pointer string) error {
 	return nil
 }
 
-// ValidateTimeRange validates time range with issued_at before expires_at
+// ValidateTimeRange validates time range with issued_at before expires_at.
+// Determinism note: chaincode validation must not use time.Now(), because every
+// endorsing peer must produce the same read/write set. Bounds are therefore
+// checked relative to the supplied issued_at timestamp only.
 func ValidateTimeRange(issuedAt, expiresAt time.Time) error {
 	if issuedAt.IsZero() {
 		return fmt.Errorf("issued_at cannot be zero")
@@ -91,12 +94,6 @@ func ValidateTimeRange(issuedAt, expiresAt time.Time) error {
 	}
 	if expiresAt.Before(issuedAt) || expiresAt.Equal(issuedAt) {
 		return fmt.Errorf("expires_at must be after issued_at")
-	}
-
-	// Validate not too far in the past (more than 1 year)
-	oneYearAgo := time.Now().AddDate(-1, 0, 0)
-	if issuedAt.Before(oneYearAgo) {
-		return fmt.Errorf("issued_at cannot be more than 1 year in the past")
 	}
 
 	// Validate not too far in the future (more than 10 years from issue)
@@ -184,13 +181,13 @@ func ValidatePageSize(pageSize int32) error {
 // ValidateRevocationReason validates revocation reason code
 func ValidateRevocationReason(reasonCode string) error {
 	validReasons := map[string]bool{
-		"COMPROMISED":      true,
-		"SUPERSEDED":       true,
-		"CESSATION":        true,
+		"COMPROMISED":         true,
+		"SUPERSEDED":          true,
+		"CESSATION":           true,
 		"PRIVILEGE_WITHDRAWN": true,
 		"AFFILIATION_CHANGED": true,
-		"ERROR_IN_DATA":    true,
-		"OTHER":            true,
+		"ERROR_IN_DATA":       true,
+		"OTHER":               true,
 	}
 
 	if !validReasons[reasonCode] {

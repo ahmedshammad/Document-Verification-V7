@@ -13,6 +13,7 @@ import { certificateApi } from '@/services/api/certificates';
 import { cn } from '@/lib/utils';
 import { computeSHA256 } from '@/lib/hash';
 import { BlockchainVerificationVisualizer } from '@/components/shared/BlockchainVerificationVisualizer';
+import { VerificationIntelligencePanel } from '@/components/shared/VerificationIntelligencePanel';
 
 type VerificationStatus = 'VALID' | 'REVOKED' | 'INVALID' | 'EXPIRED' | 'MISMATCH' | 'ISSUER_NOT_FOUND';
 
@@ -389,22 +390,24 @@ export function VerifyPage() {
   return (
     <div>
       {/* Hero */}
-      <section className="gradient-hero-subtle py-12 md:py-16 px-4">
-        <div className="container mx-auto max-w-3xl text-center">
-          <Badge variant="navy" className="mb-4">
+      <section className="relative overflow-hidden bg-slate-950 px-4 py-14 text-white md:py-20">
+        <div className="absolute inset-0 premium-mesh opacity-80" />
+        <div className="absolute inset-0 trust-grid" />
+        <div className="relative container mx-auto max-w-4xl text-center">
+          <Badge className="mb-4 border-white/15 bg-white/10 text-white backdrop-blur">
             <Shield className="h-3.5 w-3.5 mr-1.5" />
             Public Verification
           </Badge>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-3">
+          <h1 className="text-4xl font-black tracking-tight md:text-6xl">
             {t('verify.title', 'Verify a Certificate')}
           </h1>
-          <p className="text-muted-foreground">
+          <p className="mx-auto mt-4 max-w-2xl text-slate-300">
             {t('verify.subtitle', 'Instantly verify the authenticity of any certificate using ID lookup, QR code scan, or file upload.')}
           </p>
         </div>
       </section>
 
-      <div className="container mx-auto max-w-3xl py-8 px-4">
+      <div className="container mx-auto max-w-5xl py-8 px-4">
         {/* Method Tabs */}
         <div className="flex rounded-lg bg-muted p-1 mb-6">
           {([
@@ -426,6 +429,8 @@ export function VerifyPage() {
             </button>
           ))}
         </div>
+
+        <VerificationIntelligencePanel method={method} resultStatus={result?.status} fileHash={fileHash} />
 
         {/* ID Search */}
         {method === 'id' && (

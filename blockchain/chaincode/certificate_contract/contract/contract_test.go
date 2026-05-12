@@ -60,11 +60,8 @@ func TestIssueCertificate(t *testing.T) {
 	certID := "cert-test-001"
 	templateID := "training-cert"
 	version := "1.0.0"
-	holderID := "holder123"
 	certHash := "a1b2c3d4e5f6789012345678901234567890123456789012345678901234567890"
 	contentPointer := "QmX123456789abcdefghijklmnopqrstuvwxyz"
-	issuedAt := time.Now().Format(time.RFC3339)
-	expiresAt := time.Now().AddDate(1, 0, 0).Format(time.RFC3339)
 
 	// Mock template exists
 	template := models.Template{

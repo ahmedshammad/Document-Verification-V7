@@ -1,7 +1,14 @@
-import { Injectable, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  Logger,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EmailService } from '../../common/email/email.service';
@@ -9,6 +16,7 @@ import { EmailService } from '../../common/email/email.service';
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  private readonly selfRegistrationRoles = new Set(['SME_USER', 'ISSUER_ADMIN', 'ISSUER_OPERATOR', 'VERIFIER_USER']);
 
   constructor(
     private prisma: PrismaService,
@@ -18,6 +26,10 @@ export class AuthService {
   ) {}
 
   async validateUser(email: string, password: string) {
+    if (!email || !password) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase().trim() },
       include: { organization: true },
@@ -30,6 +42,10 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (user.status !== 'ACTIVE') {
+      throw new ForbiddenException('This account is not active. Please contact your administrator.');
     }
 
     return user;
@@ -67,7 +83,9 @@ export class AuthService {
 
     return {
       accessToken,
+      access_token: accessToken,
       refreshToken,
+      refresh_token: refreshToken,
       user: {
         id: user.id,
         email: user.email,
@@ -89,26 +107,78 @@ export class AuthService {
     role: string;
     organizationName?: string;
   }) {
+    const email = data.email?.toLowerCase().trim();
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      throw new BadRequestException('A valid email address is required');
+    }
+    if (!data.password || data.password.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters');
+    }
+    if (!data.firstName?.trim() || !data.lastName?.trim()) {
+      throw new BadRequestException('First name and last name are required');
+    }
+
+    const role = data.role || 'SME_USER';
+    if (!this.selfRegistrationRoles.has(role)) {
+      throw new BadRequestException('Unsupported self-registration role');
+    }
+
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new ConflictException('A user account with this email already exists');
+    }
+
+    const isIssuerRole = role === 'ISSUER_ADMIN' || role === 'ISSUER_OPERATOR';
+    if (isIssuerRole && !data.organizationName?.trim()) {
+      throw new BadRequestException('Organization name is required for issuer accounts');
+    }
+
     const passwordHash = await bcrypt.hash(data.password, 12);
 
-    const user = await this.prisma.user.create({
-      data: {
-        email: data.email.toLowerCase().trim(),
-        passwordHash,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        role: data.role as any,
-        status: 'ACTIVE',
-      },
+    const user = await this.prisma.$transaction(async (tx) => {
+      let organizationId: string | undefined;
+
+      if (isIssuerRole) {
+        const orgSlug = crypto.randomUUID().split('-')[0];
+        const org = await tx.organization.create({
+          data: {
+            orgId: `org-${orgSlug}`,
+            name: data.organizationName!.trim(),
+            type: 'TRAINING_PROVIDER',
+            mspId: `Org${orgSlug}MSP`,
+            contactEmail: email,
+            contactPerson: `${data.firstName.trim()} ${data.lastName.trim()}`,
+            active: false,
+            registrationStatus: 'PENDING',
+          },
+        });
+        organizationId = org.id;
+      }
+
+      return tx.user.create({
+        data: {
+          email,
+          passwordHash,
+          firstName: data.firstName.trim(),
+          lastName: data.lastName.trim(),
+          role: role as any,
+          status: 'ACTIVE',
+          organizationId,
+        },
+      });
     });
 
     // Send welcome email (fire-and-forget — never block registration)
     this.emailService.sendWelcome({ firstName: user.firstName, email: user.email, role: user.role }).catch(() => {});
 
-    return this.login(data.email.toLowerCase().trim(), data.password);
+    return this.login(email, data.password);
   }
 
   async logout(userId: string, token: string) {
+    if (!userId || !token) {
+      throw new UnauthorizedException('A valid authenticated session is required');
+    }
+
     await this.prisma.session.deleteMany({
       where: { userId, token },
     });
@@ -120,6 +190,64 @@ export class AuthService {
         details: {},
       },
     });
+
+    return { success: true };
+  }
+
+  async refresh(refreshToken: string) {
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token is required');
+    }
+
+    let payload: any;
+    try {
+      payload = await this.jwtService.verifyAsync(refreshToken);
+    } catch {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const session = await this.prisma.session.findFirst({
+      where: {
+        userId: payload.sub,
+        refreshToken,
+        expiresAt: { gt: new Date() },
+      },
+      include: { user: { include: { organization: true } } },
+    });
+
+    if (!session || session.user.status !== 'ACTIVE') {
+      throw new UnauthorizedException('Refresh token is no longer valid');
+    }
+
+    const newPayload = {
+      sub: session.user.id,
+      email: session.user.email,
+      role: session.user.role,
+      organizationId: session.user.organizationId,
+    };
+    const accessToken = this.jwtService.sign(newPayload);
+
+    await this.prisma.session.update({
+      where: { id: session.id },
+      data: { token: accessToken },
+    });
+
+    return {
+      accessToken,
+      access_token: accessToken,
+      refreshToken,
+      refresh_token: refreshToken,
+      user: {
+        id: session.user.id,
+        email: session.user.email,
+        firstName: session.user.firstName,
+        lastName: session.user.lastName,
+        role: session.user.role,
+        organizationId: session.user.organizationId,
+        organizationName: session.user.organization?.name,
+        locale: session.user.locale || 'en',
+      },
+    };
   }
 
   // ─── Password Reset ───────────────────────────────────────────────────────

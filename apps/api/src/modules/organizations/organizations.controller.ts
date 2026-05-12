@@ -11,6 +11,8 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
+import { UseGuards } from '@nestjs/common';
 import { OrganizationsService, RegisterOrgDto } from './organizations.service';
 
 const ADMIN_ROLES = ['PLATFORM_ADMIN', 'CONSORTIUM_ADMIN'];
@@ -41,6 +43,7 @@ export class OrganizationsController {
    */
   @Get('pending')
   @ApiBearerAuth('JWT-auth')
+  @UseGuards(AuthGuard('jwt'))
   @ApiOperation({ summary: 'List pending organization registrations (admin)' })
   listPending(@Req() req: any) {
     requireAdmin(req);
@@ -52,6 +55,7 @@ export class OrganizationsController {
    */
   @Get()
   @ApiBearerAuth('JWT-auth')
+  @UseGuards(AuthGuard('jwt'))
   @ApiOperation({ summary: 'List all organizations (admin)' })
   listAll(@Req() req: any) {
     requireAdmin(req);
@@ -63,6 +67,7 @@ export class OrganizationsController {
    */
   @Patch(':id/approve')
   @ApiBearerAuth('JWT-auth')
+  @UseGuards(AuthGuard('jwt'))
   @ApiOperation({ summary: 'Approve organization registration (admin)' })
   approve(@Param('id') id: string, @Req() req: any) {
     requireAdmin(req);
@@ -74,6 +79,7 @@ export class OrganizationsController {
    */
   @Patch(':id/reject')
   @ApiBearerAuth('JWT-auth')
+  @UseGuards(AuthGuard('jwt'))
   @ApiOperation({ summary: 'Reject organization registration (admin)' })
   reject(
     @Param('id') id: string,

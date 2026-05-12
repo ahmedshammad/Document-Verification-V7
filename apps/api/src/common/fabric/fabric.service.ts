@@ -7,9 +7,9 @@ import * as path from 'path';
 @Injectable()
 export class FabricService implements OnModuleInit {
   private readonly logger = new Logger(FabricService.name);
-  private gateway: Gateway;
-  private contract: Contract;
-  private network: Network;
+  private gateway!: Gateway;
+  private contract!: Contract;
+  private network!: Network;
 
   constructor(private configService: ConfigService) {}
 
@@ -103,11 +103,12 @@ export class FabricService implements OnModuleInit {
     issuedAt: string,
     expiresAt: string,
     signatureProofRef: string,
-  ): Promise<void> {
+  ): Promise<string> {
     this.ensureConnected();
     try {
-      await this.contract.submitTransaction(
-        'IssueCertificate',
+      const transaction = this.contract.createTransaction('IssueCertificate');
+      const transactionId = transaction.getTransactionId();
+      await transaction.submit(
         certId,
         templateId,
         templateVersion,
@@ -119,6 +120,7 @@ export class FabricService implements OnModuleInit {
         signatureProofRef,
       );
       this.logger.log(`Certificate ${certId} issued successfully on blockchain`);
+      return transactionId;
     } catch (error) {
       this.logger.error(`Failed to issue certificate ${certId}`, error);
       throw error;
@@ -129,7 +131,7 @@ export class FabricService implements OnModuleInit {
     this.ensureConnected();
     try {
       const result = await this.contract.evaluateTransaction('GetCertificateRecord', certId);
-      return JSON.parse(result.toString());
+      return this.parseJsonResult(result);
     } catch (error) {
       this.logger.error(`Failed to get certificate ${certId}`, error);
       throw error;
@@ -144,7 +146,7 @@ export class FabricService implements OnModuleInit {
         certId,
         presentedHash || '',
       );
-      return JSON.parse(result.toString());
+      return this.parseJsonResult(result);
     } catch (error) {
       this.logger.error(`Failed to verify certificate ${certId}`, error);
       throw error;
@@ -251,7 +253,7 @@ export class FabricService implements OnModuleInit {
     this.ensureConnected();
     try {
       const result = await this.contract.evaluateTransaction('GetIssuer', issuerOrgId);
-      return JSON.parse(result.toString());
+      return this.parseJsonResult(result);
     } catch (error) {
       this.logger.error(`Failed to get issuer ${issuerOrgId}`, error);
       throw error;
@@ -273,11 +275,12 @@ export class FabricService implements OnModuleInit {
     issuerConstraints: string[],
     validityDaysDefault: number,
     category: string,
-  ): Promise<void> {
+  ): Promise<string> {
     this.ensureConnected();
     try {
-      await this.contract.submitTransaction(
-        'CreateTemplate',
+      const transaction = this.contract.createTransaction('CreateTemplate');
+      const transactionId = transaction.getTransactionId();
+      await transaction.submit(
         templateId,
         version,
         displayName,
@@ -290,6 +293,7 @@ export class FabricService implements OnModuleInit {
         category,
       );
       this.logger.log(`Template ${templateId} v${version} created successfully`);
+      return transactionId;
     } catch (error) {
       this.logger.error(`Failed to create template ${templateId}`, error);
       throw error;
@@ -300,7 +304,7 @@ export class FabricService implements OnModuleInit {
     this.ensureConnected();
     try {
       const result = await this.contract.evaluateTransaction('GetTemplate', templateId, version);
-      return JSON.parse(result.toString());
+      return this.parseJsonResult(result);
     } catch (error) {
       this.logger.error(`Failed to get template ${templateId} v${version}`, error);
       throw error;
@@ -537,5 +541,19 @@ export class FabricService implements OnModuleInit {
 
   getGateway(): Gateway {
     return this.gateway;
+  }
+
+  private parseJsonResult(result: Buffer | Uint8Array): any {
+    let text = Buffer.from(result).toString('utf8').trim();
+    if (!text) return null;
+
+    // Fabric contract-api may JSON-encode string return values. Unwrap once so
+    // both object returns and explicit string JSON returns are handled.
+    const parsed = JSON.parse(text);
+    if (typeof parsed === 'string') {
+      text = parsed.trim();
+      return text ? JSON.parse(text) : null;
+    }
+    return parsed;
   }
 }

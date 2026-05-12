@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ContactService, ContactDto } from './contact.service';
 
 @ApiTags('Contact')
-@Controller('contact')
+@Controller({ path: 'contact', version: '1' })
 export class ContactController {
   constructor(private readonly contactService: ContactService) {}
 

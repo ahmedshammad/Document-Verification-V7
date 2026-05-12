@@ -3,6 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { FabricService } from '../../common/fabric/fabric.service';
 
+const ADMIN_ROLES = ['PLATFORM_ADMIN', 'CONSORTIUM_ADMIN'];
+
 @Injectable()
 export class TemplatesService {
   private readonly logger = new Logger(TemplatesService.name);
@@ -59,12 +61,14 @@ export class TemplatesService {
     const template = await this.prisma.template.create({
       data: {
         templateId,
-        version: '1',
+        version: '1.0.0',
         displayName: data.name,
         displayNameAr: data.nameAr,
         description: data.description,
         jsonSchema: data.schema || {},
         uiSchema: {},
+        requiredClaims: Array.isArray(data.schema?.required) ? data.schema.required : [],
+        issuerConstraints: [],
         organizationId: resolvedOrgId,
         category: 'general',
         createdBy: data.createdBy,
@@ -81,8 +85,16 @@ export class TemplatesService {
     };
   }
 
-  async publish(id: string) {
+  async publish(id: string, requestingUser?: any) {
     const template = await this.findById(id);
+
+    if (
+      requestingUser &&
+      !ADMIN_ROLES.includes(requestingUser.role) &&
+      template.organizationId !== requestingUser.organizationId
+    ) {
+      throw new BadRequestException('Template does not belong to your organization.');
+    }
 
     // Best-effort blockchain registration — don't block activation if Fabric is down
     let publishedToChain = false;

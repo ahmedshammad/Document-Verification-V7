@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Param, Body, Req, UseGuards } from '@nestjs/common';
+import { Controller, ForbiddenException, Get, Post, Param, Body, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { TemplatesService } from './templates.service';
 
 // Roles that can query across all organizations
 const ADMIN_ROLES = ['PLATFORM_ADMIN', 'CONSORTIUM_ADMIN'];
+const ISSUER_ROLES = ['ISSUER_ADMIN', 'ISSUER_OPERATOR'];
 // Sentinel UUID — no real org has this ID; produces an empty result set
 const NO_ORG_SENTINEL = '00000000-0000-0000-0000-000000000000';
 
@@ -50,6 +51,10 @@ export class TemplatesController {
     @Body() body: { name: string; nameAr?: string; description?: string; schema?: any; organizationId?: string },
     @Req() req: any,
   ) {
+    if (![...ADMIN_ROLES, 'ISSUER_ADMIN'].includes(req.user?.role)) {
+      throw new ForbiddenException('Only issuer administrators can create templates.');
+    }
+
     return this.templatesService.create({
       name: body.name,
       nameAr: body.nameAr,
@@ -62,7 +67,10 @@ export class TemplatesController {
 
   @Post(':id/publish')
   @ApiOperation({ summary: 'Publish a template' })
-  publish(@Param('id') id: string) {
-    return this.templatesService.publish(id);
+  publish(@Param('id') id: string, @Req() req: any) {
+    if (![...ADMIN_ROLES, ...ISSUER_ROLES].includes(req.user?.role)) {
+      throw new ForbiddenException('Only issuer roles can publish templates.');
+    }
+    return this.templatesService.publish(id, req.user);
   }
 }

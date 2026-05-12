@@ -39,8 +39,8 @@ RUN npm run build
 # ============================================================================
 FROM node:20-alpine AS runner
 
-# Install dumb-init for signal handling and openssl for Prisma
-RUN apk add --no-cache dumb-init openssl
+# Install dumb-init for signal handling, openssl for Prisma, and wget for health checks
+RUN apk add --no-cache dumb-init openssl wget
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \

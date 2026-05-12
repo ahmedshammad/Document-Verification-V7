@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 
@@ -13,15 +13,33 @@ export class StorageService {
     const ipfsPort = this.configService.get('IPFS_PORT', 5001);
 
     try {
-      // Dynamic import for ipfs-http-client
-      const { create } = await import('ipfs-http-client' as any);
-      const client = create({ host: ipfsHost, port: ipfsPort, protocol: 'http' });
-      const result = await client.add(data);
-      this.logger.log(`Stored on IPFS: ${result.cid.toString()}`);
-      return result.cid.toString();
-    } catch (error) {
+      const payload = Buffer.isBuffer(data) ? data : Buffer.from(data);
+      const blobPart = payload.buffer.slice(
+        payload.byteOffset,
+        payload.byteOffset + payload.byteLength,
+      ) as ArrayBuffer;
+      const form = new FormData();
+      form.append('file', new Blob([blobPart]), 'payload.bin');
+
+      const response = await fetch(`http://${ipfsHost}:${ipfsPort}/api/v0/add?pin=true`, {
+        method: 'POST',
+        body: form as any,
+      });
+
+      if (!response.ok) {
+        throw new Error(`IPFS add failed with HTTP ${response.status}`);
+      }
+
+      const result = (await response.json()) as { Hash?: string; Name?: string };
+      if (!result.Hash) {
+        throw new Error('IPFS add response did not include a CID');
+      }
+
+      this.logger.log(`Stored on IPFS: ${result.Hash}`);
+      return result.Hash;
+    } catch (error: any) {
       this.logger.error('IPFS storage failed', error);
-      throw error;
+      throw new ServiceUnavailableException(error?.message || 'IPFS storage failed');
     }
   }
 
@@ -29,17 +47,21 @@ export class StorageService {
     const ipfsHost = this.configService.get('IPFS_HOST', 'localhost');
     const ipfsPort = this.configService.get('IPFS_PORT', 5001);
 
+    if (!cid || !/^[a-zA-Z0-9]+$/.test(cid)) {
+      throw new BadRequestException('Invalid IPFS CID');
+    }
+
     try {
-      const { create } = await import('ipfs-http-client' as any);
-      const client = create({ host: ipfsHost, port: ipfsPort, protocol: 'http' });
-      const chunks: Uint8Array[] = [];
-      for await (const chunk of client.cat(cid)) {
-        chunks.push(chunk);
+      const response = await fetch(`http://${ipfsHost}:${ipfsPort}/api/v0/cat?arg=${encodeURIComponent(cid)}`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        throw new Error(`IPFS cat failed with HTTP ${response.status}`);
       }
-      return Buffer.concat(chunks);
-    } catch (error) {
+      return Buffer.from(await response.arrayBuffer());
+    } catch (error: any) {
       this.logger.error(`IPFS retrieval failed for CID ${cid}`, error);
-      throw error;
+      throw new ServiceUnavailableException(error?.message || 'IPFS retrieval failed');
     }
   }
 

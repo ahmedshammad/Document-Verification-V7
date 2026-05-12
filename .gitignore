@@ -19,3 +19,4 @@ infra/compose/ipfs_data
 infra/compose/prometheus_data
 infra/compose/grafana_data
 *.log
+*.tsbuildinfo

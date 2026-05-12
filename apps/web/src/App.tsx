@@ -56,15 +56,21 @@ const queryClient = new QueryClient({
   },
 });
 
+const hasRequiredRole = (actualRole?: string, requiredRole?: string | string[]) => {
+  if (!requiredRole) return true;
+  if (!actualRole) return false;
+  return Array.isArray(requiredRole) ? requiredRole.includes(actualRole) : actualRole === requiredRole;
+};
+
 // Protected Route Component
-const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string }) => {
+const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string | string[] }) => {
   const { isAuthenticated, user } = useAuthStore();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  if (requiredRole && user?.role !== requiredRole) {
+  if (!hasRequiredRole(user?.role, requiredRole)) {
     return <Navigate to="/" replace />;
   }
 
@@ -99,7 +105,7 @@ function App() {
           <Route
             path="/issuer/*"
             element={
-              <ProtectedRoute requiredRole="ISSUER_ADMIN">
+              <ProtectedRoute requiredRole={['ISSUER_ADMIN', 'ISSUER_OPERATOR']}>
                 <IssuerLayout />
               </ProtectedRoute>
             }

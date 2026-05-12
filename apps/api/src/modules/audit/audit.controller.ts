@@ -4,7 +4,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { AuditService } from './audit.service';
 
 // Roles allowed to read the full audit trail
-const AUDIT_ADMIN_ROLES = ['PLATFORM_ADMIN', 'CONSORTIUM_ADMIN', 'AUDITOR'];
+const AUDIT_ADMIN_ROLES = ['PLATFORM_ADMIN', 'CONSORTIUM_ADMIN', 'AUDITOR_USER'];
 
 @ApiTags('Audit')
 @ApiBearerAuth('JWT-auth')

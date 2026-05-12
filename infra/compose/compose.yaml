@@ -33,7 +33,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     networks:
       - sme_cert_network
     security_opt:
@@ -63,9 +63,9 @@ services:
       - ipfs_data:/data/ipfs
       - ../storage/ipfs/config:/container-init.d:ro
     ports:
-      - "5001:5001"  # API
-      - "8080:8080"  # Gateway
-      - "4001:4001"  # Swarm
+      - "127.0.0.1:5001:5001"  # API
+      - "127.0.0.1:8080:8080"  # Gateway
+      - "127.0.0.1:4001:4001"  # Swarm
     networks:
       - sme_cert_network
     security_opt:
@@ -113,7 +113,7 @@ services:
       - ../../blockchain/network/connection-profiles:/app/fabric/profiles:ro
       - ../../wallets:/app/wallets
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -137,7 +137,7 @@ services:
           cpus: '0.5'
           memory: 256M
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -154,7 +154,7 @@ services:
         VITE_PLATFORM_NAME: "SME Certificate Trust Platform"
     container_name: sme-cert-web
     ports:
-      - "5173:80"
+      - "127.0.0.1:5173:80"
     depends_on:
       - api
     networks:
@@ -174,7 +174,7 @@ services:
           cpus: '0.5'
           memory: 256M
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:80 || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -233,7 +233,7 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     networks:
       - sme_cert_network
       - fabric_network
@@ -269,7 +269,7 @@ services:
       - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
       - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
     ports:
-      - "3001:3000"
+      - "127.0.0.1:3001:3000"
     depends_on:
       - prometheus
     networks:
@@ -299,10 +299,10 @@ services:
     volumes:
       - ./otel-collector-config.yml:/etc/otel-collector-config.yml:ro
     ports:
-      - "4317:4317"  # OTLP gRPC receiver
-      - "4318:4318"  # OTLP HTTP receiver
-      - "8888:8888"  # Prometheus metrics exposed by the collector
-      - "8889:8889"  # Prometheus exporter metrics
+      - "127.0.0.1:4317:4317"  # OTLP gRPC receiver
+      - "127.0.0.1:4318:4318"  # OTLP HTTP receiver
+      - "127.0.0.1:8888:8888"  # Prometheus metrics exposed by the collector
+      - "127.0.0.1:8889:8889"  # Prometheus exporter metrics
     networks:
       - sme_cert_network
     security_opt:

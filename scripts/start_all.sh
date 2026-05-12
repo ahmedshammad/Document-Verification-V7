@@ -111,20 +111,41 @@ echo_step "Step 2: Starting application services..."
 cd "$PROJECT_ROOT/infra/compose"
 
 # Load environment variables
-if [ -f "$PROJECT_ROOT/.env" ]; then
+ENV_FILE="$PROJECT_ROOT/.env"
+if [ -f "$ENV_FILE" ]; then
     set -a
-    source "$PROJECT_ROOT/.env"
+    source "$ENV_FILE"
+    set +a
+else
+    echo_warn "Root .env not found. Generating development-safe defaults. Rotate secrets before production use."
+    cat > "$ENV_FILE" <<EOF_ENV
+POSTGRES_PASSWORD=$(openssl rand -base64 24 | tr -d '\n=/+')
+JWT_SECRET=$(openssl rand -base64 48 | tr -d '\n=/+')
+MASTER_ENCRYPTION_KEY=$(openssl rand -hex 32)
+CORS_ORIGIN=http://localhost,http://localhost:5173
+SMTP_HOST=localhost
+SMTP_PORT=25
+SMTP_USER=noreply@localhost
+SMTP_PASS=disabled
+CONTACT_TO_EMAIL=admin@example.com
+PLATFORM_NAME="SME Certificate Trust Platform"
+APP_URL=http://localhost
+SWAGGER_ENABLED=false
+GF_SECURITY_ADMIN_PASSWORD=$(openssl rand -base64 12 | tr -d '\n=/+')
+EOF_ENV
+    set -a
+    source "$ENV_FILE"
     set +a
 fi
 
 # Start services
-docker compose up -d
+docker compose --env-file "$ENV_FILE" up -d
 
 echo_info "Waiting for services to be healthy (15s)..."
 sleep 15
 
 # Check service health
-docker compose ps
+docker compose --env-file "$ENV_FILE" ps
 
 # =============================================================================
 # Step 3: Run Database Migrations
@@ -139,21 +160,22 @@ done
 
 # Run migrations
 docker exec sme-cert-api npx prisma migrate deploy 2>/dev/null || docker exec sme-cert-api yarn prisma migrate deploy 2>/dev/null || true
+docker exec sme-cert-api npx prisma db push --schema=/app/prisma/schema.prisma 2>/dev/null || {
+    echo_warn "Prisma db push failed; check API logs if database tables are missing"
+}
 
 echo_info "Database migrations complete"
 
 # =============================================================================
-# Step 4: Seed Initial Data (if needed)
+# Step 4: Seed Initial Data
 # =============================================================================
-if [ ! -f "$PROJECT_ROOT/.data-seeded" ]; then
-    echo_step "Step 4: Seeding initial data..."
-    docker exec sme-cert-api npx ts-node prisma/seed.ts 2>/dev/null || docker exec sme-cert-api yarn seed 2>/dev/null || {
-        echo_warn "Seed script not available or already seeded"
-    }
+echo_step "Step 4: Ensuring demo data exists..."
+if docker exec sme-cert-api npx ts-node --transpile-only --compiler-options '{"module":"commonjs"}' prisma/seed.ts >/dev/null 2>&1 || docker exec sme-cert-api yarn seed >/dev/null 2>&1; then
     touch "$PROJECT_ROOT/.data-seeded"
-    echo_info "Initial data seeded"
+    echo_info "Initial data available"
 else
-    echo_info "Step 4: Initial data already seeded, skipping"
+    rm -f "$PROJECT_ROOT/.data-seeded"
+    echo_warn "Seed failed; login demo users may be unavailable. Check API logs."
 fi
 
 # =============================================================================

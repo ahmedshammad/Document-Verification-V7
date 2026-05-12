@@ -25,7 +25,7 @@ echo ""
 # Stop application services
 echo_info "Stopping application services..."
 cd "$PROJECT_ROOT/infra/compose"
-docker compose down || true
+docker compose --env-file "$PROJECT_ROOT/.env" down || true
 
 # Stop Fabric network
 echo_info "Stopping Hyperledger Fabric network..."

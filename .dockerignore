@@ -1,0 +1,33 @@
+# Keep Docker build contexts small and deterministic. The API and web images are
+# built from the repository root, but their Dockerfiles only need package/source
+# files for the selected app. Excluding generated/runtime artifacts prevents
+# containerd disk exhaustion during rebuilds.
+
+.git
+.gitignore
+.data-seeded
+
+**/node_modules
+**/dist
+**/coverage
+**/.cache
+**/.turbo
+**/test-results
+**/playwright-report
+
+.yarn/cache
+.yarn/install-state.gz
+
+logs
+uploads
+wallets
+
+blockchain/chaincode/**/vendor
+blockchain/network/crypto-config
+blockchain/network/channel-artifacts
+blockchain/network/connection-profiles
+
+infra/compose/*_data
+*.log
+*.tmp
+*.bak

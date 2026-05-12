@@ -501,6 +501,24 @@ func (c *CertificateContract) IssueCertificate(
 func (c *CertificateContract) GetCertificateRecord(
 	ctx contractapi.TransactionContextInterface,
 	certID string,
+) (string, error) {
+	cert, err := c.getCertificateRecord(ctx, certID, true)
+	if err != nil {
+		return "", err
+	}
+
+	certJSON, err := cert.ToJSON()
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal certificate: %v", err)
+	}
+
+	return string(certJSON), nil
+}
+
+func (c *CertificateContract) getCertificateRecord(
+	ctx contractapi.TransactionContextInterface,
+	certID string,
+	enforceAccess bool,
 ) (*models.Certificate, error) {
 	key := CertificateKeyPrefix + certID
 	certJSON, err := ctx.GetStub().GetState(key)
@@ -514,6 +532,10 @@ func (c *CertificateContract) GetCertificateRecord(
 	cert, err := models.CertificateFromJSON(certJSON)
 	if err != nil {
 		return nil, err
+	}
+
+	if !enforceAccess {
+		return cert, nil
 	}
 
 	// Access control check
@@ -540,7 +562,7 @@ func (c *CertificateContract) VerifyCertificateRecord(
 	presentedHash string,
 ) (string, error) {
 	// Get certificate
-	cert, err := c.GetCertificateRecord(ctx, certID)
+	cert, err := c.getCertificateRecord(ctx, certID, false)
 	if err != nil {
 		return "", err
 	}

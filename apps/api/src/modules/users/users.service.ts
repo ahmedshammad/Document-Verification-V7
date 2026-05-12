@@ -1,5 +1,7 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+
+const ADMIN_ROLES = ['PLATFORM_ADMIN', 'CONSORTIUM_ADMIN'];
 
 @Injectable()
 export class UsersService {
@@ -7,7 +9,12 @@ export class UsersService {
 
   constructor(private prisma: PrismaService) {}
 
-  async findAll(page = 1, limit = 20) {
+  async findAll(requestingUser: any, page = 1, limit = 20) {
+    if (!ADMIN_ROLES.includes(requestingUser?.role)) {
+      throw new ForbiddenException('Only administrators can list users.');
+    }
+    page = Math.max(Number(page) || 1, 1);
+    limit = Math.min(Math.max(Number(limit) || 20, 1), 100);
     const skip = (page - 1) * limit;
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({
@@ -22,7 +29,11 @@ export class UsersService {
     return { users, total, page, limit };
   }
 
-  async findById(id: string) {
+  async findById(id: string, requestingUser?: any) {
+    if (requestingUser && id !== requestingUser.id && !ADMIN_ROLES.includes(requestingUser.role)) {
+      throw new ForbiddenException('You can only access your own profile.');
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id },
       include: { organization: true },
@@ -32,10 +43,20 @@ export class UsersService {
     return user;
   }
 
-  async update(id: string, data: { firstName?: string; lastName?: string; locale?: string }) {
+  async update(id: string, data: { firstName?: string; lastName?: string; locale?: string }, requestingUser?: any) {
+    if (requestingUser && id !== requestingUser.id && !ADMIN_ROLES.includes(requestingUser.role)) {
+      throw new ForbiddenException('You can only update your own profile.');
+    }
+
+    const safeData = {
+      ...(typeof data.firstName === 'string' ? { firstName: data.firstName.trim() } : {}),
+      ...(typeof data.lastName === 'string' ? { lastName: data.lastName.trim() } : {}),
+      ...(typeof data.locale === 'string' && ['en', 'ar'].includes(data.locale) ? { locale: data.locale } : {}),
+    };
+
     return this.prisma.user.update({
       where: { id },
-      data,
+      data: safeData,
     });
   }
 }

@@ -1,6 +1,7 @@
 import { Controller, Post, Body, UseGuards, Req, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 
 @ApiTags('Authentication')
@@ -35,10 +36,19 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
+  @UseGuards(AuthGuard('jwt'))
   @ApiOperation({ summary: 'User logout' })
   async logout(@Req() req: any) {
     const token = req.headers.authorization?.replace('Bearer ', '');
     return this.authService.logout(req.user?.id, token);
+  }
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiOperation({ summary: 'Refresh an access token using a valid refresh token' })
+  async refresh(@Body() body: { refreshToken: string }) {
+    return this.authService.refresh(body.refreshToken);
   }
 
   @Post('forgot-password')
